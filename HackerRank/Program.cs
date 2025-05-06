@@ -32,6 +32,29 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+}
+
+app.UseStaticFiles();
+
+app.Use(async (context, next) =>
+{
+    if (!context.Request.Path.Value.StartsWith("/api") &&
+        !Path.HasExtension(context.Request.Path.Value))
+    {
+        context.Response.ContentType = "text/html";
+        await context.Response.SendFileAsync(Path.Combine(app.Environment.WebRootPath, "index.html"));
+    }
+    else
+    {
+        await next();
+    }
+});
+
+app.UseRouting();
+
 app.UseSwagger();
 app.UseSwaggerUI();
 
