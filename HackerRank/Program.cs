@@ -37,7 +37,16 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 }
 
+app.UseSwagger();
+app.UseSwaggerUI();
+
 app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseCors(MyAllowSpecificOrigins);
+
+app.UseAuthorization();
 
 app.Use(async (context, next) =>
 {
@@ -53,16 +62,7 @@ app.Use(async (context, next) =>
     }
 });
 
-app.UseRouting();
-
-app.UseSwagger();
-app.UseSwaggerUI();
-
-app.UseCors(MyAllowSpecificOrigins);
-
 app.UseHttpsRedirection();
-
-app.UseAuthorization();
 
 app.MapControllers();
 
