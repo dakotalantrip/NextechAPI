@@ -17,22 +17,14 @@ namespace HackerRank.Controllers
         [HttpGet]
         public async Task<IActionResult> GetNew()
         {
-            var results = await _hackerRankService.GetNew();
+            var results = await _hackerRankService.Get();
             return Ok(results);
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetNewWithUrl()
+        public async Task<IActionResult> GetNewPaginated(string? searchTerm, int page, int pageSize)
         {
-            var results = await _hackerRankService.GetNewWithUrl();
-            return Ok(results);
-        }
-
-
-        [HttpGet]
-        public async Task<IActionResult> Search(string? searchTerm, int page, int pageSize)
-        {
-            var results = await _hackerRankService.Search(searchTerm, page, pageSize);
+            var results = await _hackerRankService.GetPaginated(searchTerm, page, pageSize);
             return Ok(results);
         }
     }

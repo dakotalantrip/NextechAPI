@@ -4,8 +4,7 @@ namespace HackerRank.Services
 {
     public interface IHackerRankService
     {
-        Task<IEnumerable<HackerRankItemDTO>> GetNewWithUrl();
-        Task<IEnumerable<HackerRankItemDTO>> GetNew();
-        Task<PaginatedResultDTO<HackerRankItemDTO>> Search(string? searchTerm, int page, int pageSize);
+        Task<IEnumerable<HackerRankItemDTO>> Get();
+        Task<PaginatedResultDTO<HackerRankItemDTO>> GetPaginated(string? searchTerm, int page, int pageSize);
     }
 }

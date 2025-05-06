@@ -1,22 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 using HackerRank.Controllers;
 using HackerRank.DataTransferObjects;
 using HackerRank.Services;
-using HackerRank.UnitTests.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using HackerRankAPI.TestingUtilities.Data;
 
 namespace HackerRank.UnitTests.UnitTests
 {
     public class HackerRankControllerUnitTests
     {
         private readonly HackerRankController _hackerRankController;
+        private readonly string nonExistentSearchTerm = HackerRankDataFactory.nonExistentSearchTerm();
         private readonly Mock<IHackerRankService> _mockService;
 
         public HackerRankControllerUnitTests()
@@ -31,8 +28,8 @@ namespace HackerRank.UnitTests.UnitTests
         public async Task GetNew_ReturnsOk()
         {
             // Arrange
-            var mockData = DataFactory.GetItemDTOs();
-            _mockService.Setup(service => service.GetNew()).ReturnsAsync(mockData);
+            var mockData = HackerRankDataFactory.GetItemDTOs();
+            _mockService.Setup(service => service.Get()).ReturnsAsync(mockData);
 
             // Act
             var result = await _hackerRankController.GetNew() as OkObjectResult;
@@ -46,8 +43,8 @@ namespace HackerRank.UnitTests.UnitTests
         public async Task GetNew_ReturnsNotEmpty()
         {
             // Arrange
-            var mockData = DataFactory.GetItemDTOs();
-            _mockService.Setup(service => service.GetNew()).ReturnsAsync(mockData);
+            var mockData = HackerRankDataFactory.GetItemDTOs();
+            _mockService.Setup(service => service.Get()).ReturnsAsync(mockData);
 
             // Act
             var result = await _hackerRankController.GetNew() as OkObjectResult;
@@ -61,7 +58,7 @@ namespace HackerRank.UnitTests.UnitTests
         public async Task GetNew_ReturnsEmpty()
         {
             // Arrange
-            _mockService.Setup(service => service.GetNew()).ReturnsAsync(new List<HackerRankItemDTO>());
+            _mockService.Setup(service => service.Get()).ReturnsAsync(new List<HackerRankItemDTO>());
 
             // Act
             var result = await _hackerRankController.GetNew() as OkObjectResult;
@@ -73,17 +70,17 @@ namespace HackerRank.UnitTests.UnitTests
 
         #endregion
 
-        #region Search
+        #region GetNewPaginated
 
         [Fact]
-        public async Task Search_ReturnsOk()
+        public async Task GetNewPaginated_ReturnsOk()
         {
             // Arrange
-            var mockData = DataFactory.GetPaginatedResult();
-            _mockService.Setup(service => service.Search("test", 1, 10)).ReturnsAsync(mockData);
+            var mockData = HackerRankDataFactory.GetPaginatedResult();
+            _mockService.Setup(service => service.GetPaginated("test", 1, 10)).ReturnsAsync(mockData);
 
             // Act
-            var result = await _hackerRankController.Search("test", 1, 10) as OkObjectResult;
+            var result = await _hackerRankController.GetNewPaginated("test", 1, 10) as OkObjectResult;
 
             // Assert
             Assert.IsAssignableFrom<OkObjectResult>(result);
@@ -92,15 +89,15 @@ namespace HackerRank.UnitTests.UnitTests
         }
 
         [Fact]
-        public async Task Search_ReturnsNotEmpty()
+        public async Task GetNewPaginated_ReturnsNotEmpty()
         {
             // Arrange
-            var mockData = DataFactory.GetPaginatedResult();
+            var mockData = HackerRankDataFactory.GetPaginatedResult();
             var testString = string.Join(",", mockData.Items.Select(x => x.Title));
-            _mockService.Setup(service => service.Search(testString, 1, 10)).ReturnsAsync(mockData);
+            _mockService.Setup(service => service.GetPaginated(testString, 1, 10)).ReturnsAsync(mockData);
 
             // Act
-            var result = await _hackerRankController.Search(testString, 1, 10) as OkObjectResult;
+            var result = await _hackerRankController.GetNewPaginated(testString, 1, 10) as OkObjectResult;
             var value = result?.Value as PaginatedResultDTO<HackerRankItemDTO>;
 
             // Assert
@@ -110,24 +107,14 @@ namespace HackerRank.UnitTests.UnitTests
         }
 
         [Fact]
-        public async Task Search_ReturnsEmpty()
+        public async Task GetNewPaginated_ReturnsEmpty()
         {
             // Arrange
-            var mockData = DataFactory.GetPaginatedResult();
-            var testString = mockData.Items.Where(x => !string.IsNullOrEmpty(x.Title)).FirstOrDefault()?.Title;
-
-            Assert.NotNull(testString);
-
-            using var sha256 = SHA256.Create();
-            var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(testString));
-            var uniqueString = BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
-
-            Assert.NotEqual(testString, uniqueString);
-
-            _mockService.Setup(service => service.Search(uniqueString, 1, 10)).ReturnsAsync(mockData);
+            var mockData = HackerRankDataFactory.GetPaginatedResult();
+            _mockService.Setup(service => service.GetPaginated(nonExistentSearchTerm, 1, 10)).ReturnsAsync(mockData);
 
             // Act
-            var result = await _hackerRankController.Search(uniqueString, 1, 10) as OkObjectResult;
+            var result = await _hackerRankController.GetNewPaginated(nonExistentSearchTerm, 1, 10) as OkObjectResult;
             var value = result?.Value as PaginatedResultDTO<HackerRankItemDTO>;
 
             // Assert

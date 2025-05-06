@@ -1,23 +1,25 @@
 ﻿using AutoMapper;
-using System.Net.Http;
-using HackerRank.Services;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
-using HackerRank.Models;
 using HackerRank.DataTransferObjects;
+using HackerRank.Models;
+using HackerRank.Services;
+using HackerRankAPI.TestingUtilities.Data;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace HackerRank.IntegrationTests.Tests
 {
     public class HackerRankServiceIntegrationTests
     {
+        private readonly string cacheKey = HackerRankDataFactory.cacheKey;
+        private readonly string searchTerm = HackerRankDataFactory.searchTerm;
         private readonly IHackerRankService _hackerRankService;
+        private readonly IMemoryCache _memoryCache;
 
         public HackerRankServiceIntegrationTests()
         {
             // Set up HttpClient
             var httpClient = new HttpClient
             {
-                BaseAddress = new Uri("https://hacker-news.firebaseio.com/v0/")
+                BaseAddress = new Uri(HackerRankDataFactory.hackerRankUrl)
             };
 
             // Set up IMapper
@@ -29,20 +31,20 @@ namespace HackerRank.IntegrationTests.Tests
             });
             var mapper = mapperConfig.CreateMapper();
 
-            var memoryCache = new MemoryCache(new MemoryCacheOptions());
+            _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
             _hackerRankService = new HackerRankService(
                 httpClient,
                 mapper,
-                memoryCache
+                _memoryCache
             ); ;
         }
 
         [Fact]
-        public async Task GetNew_ReturnsValidData()
+        public async Task Get_ReturnsValidData()
         {
             // Act
-            var result = await _hackerRankService.GetNew();
+            var result = await _hackerRankService.Get();
 
             // Assert
             Assert.NotNull(result);
@@ -55,13 +57,25 @@ namespace HackerRank.IntegrationTests.Tests
         }
 
         [Fact]
-        public async Task Search_ReturnsResults()
+        public async Task Get_CachesResponse()
         {
-            // Arrange
-            var searchTerm = "test";
-
             // Act
-            var result = await _hackerRankService.Search(searchTerm, 1 , 10);
+            var result = await _hackerRankService.Get();
+            _memoryCache.TryGetValue(cacheKey, out IEnumerable<HackerRankItemDTO>? memoryCacheResult);
+            var projectedResult = result.Select(x => new { x.ID, x.Title, x.Url, x.Author, x.Time });
+            var projectMemoryCacheResult = memoryCacheResult?.Select(x => new { x.ID, x.Title, x.Url, x.Author, x.Time });
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.NotNull(memoryCacheResult);
+            Assert.Equal(projectedResult, projectMemoryCacheResult);
+        }
+
+        [Fact]
+        public async Task GetPaginated_ValidData()
+        {
+            // Act
+            var result = await _hackerRankService.GetPaginated(searchTerm, 1 , 10);
 
             // Assert
             Assert.NotNull(result);

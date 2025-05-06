@@ -22,12 +22,7 @@ namespace HackerRank.Services
             _memoryCache = memoryCache;
         }
 
-        public async Task<IEnumerable<HackerRankItemDTO>> GetNewWithUrl()
-        {
-            return (await GetNew()).Where(x => !string.IsNullOrEmpty(x.Url));
-        }
-
-        public async Task<IEnumerable<HackerRankItemDTO>> GetNew()
+        public async Task<IEnumerable<HackerRankItemDTO>> Get()
         {
             const string cacheKey = "responses";
             var cachedValue = GetCachedValue<IEnumerable<HackerRankItemDTO>>(cacheKey);
@@ -38,10 +33,10 @@ namespace HackerRank.Services
             {
                 var ids = await GetNewStoryIDs();
                 var items = await GetItems(ids);
-                if (items != null)
+                if (items != null && items.Any())
                 {
-                    var dataTransferObjects = items.Where(x => x != null && !string.IsNullOrEmpty(x.Url)).Select(x => _mapper.Map<HackerRankItemDTO>(x));
-                    _memoryCache.Set<IEnumerable<HackerRankItemDTO>>(cacheKey, dataTransferObjects, TimeSpan.FromMinutes(cacheTTL));
+                    var dataTransferObjects = items.Select(x => _mapper.Map<HackerRankItemDTO>(x));
+                    _memoryCache.Set(cacheKey, dataTransferObjects, TimeSpan.FromMinutes(cacheTTL));
                     return dataTransferObjects;
                 }
                 else
@@ -55,19 +50,22 @@ namespace HackerRank.Services
             }
         }
 
-        public async Task<PaginatedResultDTO<HackerRankItemDTO>> Search(string searchTerm, int page, int pageSize)
+        public async Task<PaginatedResultDTO<HackerRankItemDTO>> GetPaginated(string? searchTerm, int page, int pageSize)
         {
-            var results = await GetNew();
-            var filteredResults = string.IsNullOrEmpty(searchTerm) ? results.Select(x => _mapper.Map<HackerRankItemDTO>(x)) : results
+            var results = await Get();
+            searchTerm = searchTerm?.ToLower().Trim() ?? "";
+
+            var filteredResults = string.IsNullOrEmpty(searchTerm) ? results : results
                 .Where(x => 
-                    x.Url.Contains(searchTerm) || 
-                    x.Title.Contains(searchTerm) ||
-                    x.Author.Contains(searchTerm))
-                .Select(x => _mapper.Map<HackerRankItemDTO>(x));
+                    x.Url.ToLower().Contains(searchTerm) || 
+                    x.Title.ToLower().Contains(searchTerm) ||
+                    x.Author.ToLower().Contains(searchTerm));
 
             var paginatedResult = filteredResults.ToPaginatedResult(page, pageSize);
             return paginatedResult;
         }
+
+        #region Utility
 
         private async Task<IEnumerable<int>> GetNewStoryIDs()
         {
@@ -147,10 +145,10 @@ namespace HackerRank.Services
                     }
                 });
 
-                var stories = await Task.WhenAll(tasks);
+                var stories = (await Task.WhenAll(tasks)).Where(x => x != null).Where(x => x != null && !string.IsNullOrEmpty(x.Url));
                 if (stories != null)
                 {
-                    _memoryCache.Set<IEnumerable<HackerRankItem?>>(cacheKey, stories, TimeSpan.FromMinutes(cacheTTL));
+                    _memoryCache.Set(cacheKey, stories, TimeSpan.FromMinutes(cacheTTL));
                     return stories;
                 }
                 else
@@ -158,9 +156,7 @@ namespace HackerRank.Services
                     throw new Exception($"Unable to deserialize stories");
                 }
             }
-
-            catch
-            (Exception ex)
+            catch (Exception ex)
             {
                 throw new Exception($"Error retrieving story data from HackerRank. Error {ex.Message}");
             }
@@ -176,5 +172,7 @@ namespace HackerRank.Services
 
             return default!;
         }
+
+        #endregion
     }
 }

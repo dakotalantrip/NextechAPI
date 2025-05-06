@@ -19,17 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\HackerRankAPI.TestingUtilities\HackerRankAPI.TestingUtilities.csproj" />
     <ProjectReference Include="..\HackerRank\HackerRank.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Data\HackerRankItems.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>
