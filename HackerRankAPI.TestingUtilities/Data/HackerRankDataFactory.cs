@@ -3,7 +3,6 @@ using System.Text;
 using System.Text.Json;
 using HackerRank.DataTransferObjects;
 using HackerRank.Models;
-using Microsoft.AspNetCore.Http;
 
 namespace HackerRankAPI.TestingUtilities.Data
 {
@@ -38,7 +37,7 @@ namespace HackerRankAPI.TestingUtilities.Data
                 ID = x.ID,
                 Title = x.Title,
                 Url = x.Url,
-                Author = x.By,
+                Author = x.By ?? string.Empty,
                 Time = DateTimeOffset.FromUnixTimeSeconds(x.Time).ToLocalTime()
             });
         }

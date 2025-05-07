@@ -67,6 +67,57 @@ namespace HackerRank.Services
 
         #region Utility
 
+        private T GetCachedValue<T>(string cacheKey)
+        {
+            if (_memoryCache.TryGetValue(cacheKey, out T? cachedValue))
+            {
+                if (cachedValue != null)
+                    return cachedValue;
+            }
+
+            return default!;
+        }
+
+        private async Task<IEnumerable<HackerRankItem?>> GetItems(IEnumerable<int> ids)
+        {
+            const string cacheKey = "stories";
+            var cachedValue = GetCachedValue<IEnumerable<HackerRankItem?>>(cacheKey);
+            if (cachedValue != null)
+                return cachedValue;
+
+            try
+            {
+                var semaphore = new SemaphoreSlim(10);
+                var tasks = ids.Select(async id =>
+                {
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        return await GetHackerRankItem(id);
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+
+                var stories = (await Task.WhenAll(tasks)).Where(x => x != null).Where(x => x != null && !string.IsNullOrEmpty(x.Url));
+                if (stories != null)
+                {
+                    _memoryCache.Set(cacheKey, stories, TimeSpan.FromMinutes(cacheTTL));
+                    return stories;
+                }
+                else
+                {
+                    throw new Exception($"Unable to deserialize stories");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error retrieving story data from HackerRank. Error {ex.Message}");
+            }
+        }
+
         private async Task<IEnumerable<int>> GetNewStoryIDs()
         {
             const string cacheKey = "ids";
@@ -104,73 +155,27 @@ namespace HackerRank.Services
             }
         }
 
-        private async Task<IEnumerable<HackerRankItem?>> GetItems(IEnumerable<int> ids)
+        private async Task<HackerRankItem?> GetHackerRankItem(int id)
         {
-            const string cacheKey = "stories";
-            var cachedValue = GetCachedValue<IEnumerable<HackerRankItem?>>(cacheKey);
-            if (cachedValue != null)
-                return cachedValue;
-
-            try
+            var storyResponse = await _httpClient.GetAsync($"{url}item/{id}.json?print=pretty");
+            if (storyResponse.IsSuccessStatusCode)
             {
-                var semaphore = new SemaphoreSlim(10);
-                var tasks = ids.Select(async id =>
+                var storyBody = await storyResponse.Content.ReadAsStringAsync();
+                try
                 {
-                    await semaphore.WaitAsync();
-                    try
-                    {
-                        var storyResponse = await _httpClient.GetAsync($"{url}item/{id}.json?print=pretty");
-                        if (storyResponse.IsSuccessStatusCode)
-                        {
-                            var storyBody = await storyResponse.Content.ReadAsStringAsync();
-                            try
-                            {
-                                var hackerRankResponse = JsonSerializer.Deserialize<HackerRankItem>(storyBody, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                                return hackerRankResponse;
-                            }
-
-                            catch (Exception ex)
-                            {
-                                throw new Exception($"Error deserializing data. Error: {ex.Message}");
-                            }
-                        }
-                        else
-                        {
-                            return null;
-                        }
-                    }
-                    finally
-                    {
-                        semaphore.Release();
-                    }
-                });
-
-                var stories = (await Task.WhenAll(tasks)).Where(x => x != null).Where(x => x != null && !string.IsNullOrEmpty(x.Url));
-                if (stories != null)
-                {
-                    _memoryCache.Set(cacheKey, stories, TimeSpan.FromMinutes(cacheTTL));
-                    return stories;
+                    var hackerRankResponse = JsonSerializer.Deserialize<HackerRankItem>(storyBody, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return hackerRankResponse;
                 }
-                else
+
+                catch (Exception ex)
                 {
-                    throw new Exception($"Unable to deserialize stories");
+                    throw new Exception($"Error deserializing data. Error: {ex.Message}");
                 }
             }
-            catch (Exception ex)
+            else
             {
-                throw new Exception($"Error retrieving story data from HackerRank. Error {ex.Message}");
+                return null;
             }
-        }
-
-        private T GetCachedValue<T>(string cacheKey)
-        {
-            if (_memoryCache.TryGetValue(cacheKey, out T? cachedValue))
-            {
-                if (cachedValue != null)
-                    return cachedValue;
-            }
-
-            return default!;
         }
 
         #endregion
