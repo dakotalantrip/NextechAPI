@@ -78,6 +78,29 @@ namespace HackerRank.Services
             return default!;
         }
 
+        private async Task<HackerRankItem?> GetHackerRankItem(int id)
+        {
+            var storyResponse = await _httpClient.GetAsync($"{url}item/{id}.json?print=pretty");
+            if (storyResponse.IsSuccessStatusCode)
+            {
+                var storyBody = await storyResponse.Content.ReadAsStringAsync();
+                try
+                {
+                    var hackerRankResponse = JsonSerializer.Deserialize<HackerRankItem>(storyBody, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    return hackerRankResponse;
+                }
+
+                catch (Exception ex)
+                {
+                    throw new Exception($"Error deserializing data. Error: {ex.Message}");
+                }
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         private async Task<IEnumerable<HackerRankItem?>> GetItems(IEnumerable<int> ids)
         {
             const string cacheKey = "stories";
@@ -152,29 +175,6 @@ namespace HackerRank.Services
             catch (Exception ex)
             {
                 throw new Exception($"Error retrieving new story ids from HackerRank. Error: {ex.Message}");
-            }
-        }
-
-        private async Task<HackerRankItem?> GetHackerRankItem(int id)
-        {
-            var storyResponse = await _httpClient.GetAsync($"{url}item/{id}.json?print=pretty");
-            if (storyResponse.IsSuccessStatusCode)
-            {
-                var storyBody = await storyResponse.Content.ReadAsStringAsync();
-                try
-                {
-                    var hackerRankResponse = JsonSerializer.Deserialize<HackerRankItem>(storyBody, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    return hackerRankResponse;
-                }
-
-                catch (Exception ex)
-                {
-                    throw new Exception($"Error deserializing data. Error: {ex.Message}");
-                }
-            }
-            else
-            {
-                return null;
             }
         }
 
